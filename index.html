@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AssetPulse — Publication: asset inventory, compliance, and on-prem deployment</title>
+<meta name="description" content="Technical publication for AssetPulse: a self-hosted asset inventory and monthly compliance platform. Scope, architecture, import pipeline, security model, deployment paths, findings, limitations, and evidence.">
+<meta name="author" content="David Idemudia Odige">
+<link rel="canonical" href="https://odigiedavididemudia.github.io/AssetPulse/">
+<meta property="og:title" content="AssetPulse — Publication">
+<meta property="og:description" content="What was built, how it works, what was verified, and what it does not claim. A documentation record for a self-hosted asset inventory and compliance platform.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://odigiedavididemudia.github.io/AssetPulse/">
+<meta property="og:image" content="https://odigiedavididemudia.github.io/AssetPulse/assets/brand-assetpulse.png">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "AssetPulse — Publication",
+  "description": "A technical record of a self-hosted asset inventory and monthly compliance platform: architecture, import pipeline, security model, deployment paths, findings, and limits.",
+  "url": "https://odigiedavididemudia.github.io/AssetPulse/",
+  "image": "https://odigiedavididemudia.github.io/AssetPulse/assets/brand-assetpulse.png",
+  "inLanguage": "en",
+  "datePublished": "2026-10-20",
+  "dateModified": "2026-10-20",
+  "keywords": "asset inventory, compliance, Excel import, Flask, React, PostgreSQL, on-premises, air-gapped deployment",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "David Idemudia Odige",
+      "url": "https://github.com/OdigieDavidIdemudia"
+    }
+  ]
+}
+</script>
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('assetpulse-publication-theme');
+    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
+  } catch (e) {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+})();
+</script>
+<style>
+/* ============================================================
+   AssetPulse publication
+   Visual language: minimalism, Inter, neutral ramp, green accent.
+   Hairlines and whitespace first; containers only where needed.
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+
+  --bg: #FAFAFA;
+  --surface: #F1F1F1;
+  --raised: #FFFFFF;
+  --line: #E4E4E4;
+  --line-strong: #D1D1D1;
+
+  --ink: #141414;
+  --muted: #565656;
+  --faint: #7A7A7A;
+
+  --accent: #047857;
+  --accent-bright: #10B981;
+  --accent-soft: #ECFDF5;
+  --accent-line: #A7F3D0;
+
+  --warn: #92400E;
+  --warn-soft: #FFFBEB;
+  --warn-line: #FDE68A;
+
+  --code-bg: #F1F1F1;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --radius: 4px;
+
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --max: 1120px;
+  --gutter: clamp(20px, 5vw, 48px);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #141414;
+  --surface: #1C1C1C;
+  --raised: #242424;
+  --line: #2E2E2E;
+  --line-strong: #3A3A3A;
+
+  --ink: #FAFAFA;
+  --muted: #C4C4C4;
+  --faint: #A8A8A8;
+
+  --accent: #34D399;
+  --accent-bright: #34D399;
+  --accent-soft: #0B2A20;
+  --accent-line: #14532D;
+
+  --warn: #FCD34D;
+  --warn-soft: #2A2110;
+  --warn-line: #78350F;
+
+  --code-bg: #1C1C1C;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+
+::selection { background: var(--accent-line); color: var(--ink); }
+
+a {
+  color: var(--ink);
+  text-decoration-color: var(--accent-bright);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+a:hover { color: var(--accent); text-decoration-color: currentColor; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+img { max-width: 100%; height: auto; }
+
+h1, h2, h3, h4 {
+  margin: 0;
+  font-weight: 400;
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+p { margin: 0 0 1em; }
+p:last-child { margin-bottom: 0; }
+
+code, pre, .mono { font-family: var(--mono); font-size: 0.86em; }
+
+code {
+  background: var(--code-bg);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0.12em 0.36em;
+  overflow-wrap: break-word;
+}
+
+pre {
+  margin: 1.25em 0 0;
+  padding: 16px 18px;
+  background: var(--code-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  line-height: 1.65;
+  -webkit-overflow-scrolling: touch;
+}
+pre code { background: none; border: 0; padding: 0; font-size: 13px; }
+
+.skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--ink);
+  color: var(--bg);
+  padding: 10px 14px;
+  z-index: 100;
+}
+.skip:focus { left: 16px; top: 16px; }
+
+.wrap {
+  width: min(var(--max), calc(100% - (var(--gutter) * 2)));
+  margin-inline: auto;
+}
+
+/* ---------- header ---------- */
+
+.site-head {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+
+.head-inner {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-height: 64px;
+  width: min(var(--max), calc(100% - (var(--gutter) * 2)));
+  margin-inline: auto;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--ink);
+  min-width: 0;
+}
+.brand:hover { color: var(--ink); }
+.brand-mark { flex: 0 0 auto; display: block; }
+.brand-word {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+.brand-word .pulse { color: var(--accent); }
+.brand-slash { color: var(--line-strong); font-weight: 300; }
+.brand-sub {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.head-nav {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-left: auto;
+}
+.head-nav a {
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+}
+.head-nav a:hover { color: var(--ink); }
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 0;
+  min-height: 38px;
+  padding: 7px 11px;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+}
+.theme-toggle:hover { color: var(--ink); border-color: var(--faint); background: var(--surface); }
+.theme-toggle .glyph { font-size: 13px; line-height: 1; color: var(--accent); }
+
+/* ---------- hero ---------- */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+  gap: clamp(32px, 6vw, 80px);
+  align-items: start;
+  padding: clamp(48px, 8vw, 92px) 0 clamp(40px, 6vw, 64px);
+  border-bottom: 1px solid var(--line);
+}
+
+.eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 22px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.eyebrow .sep { color: var(--line-strong); }
+.eyebrow .meta { color: var(--faint); font-weight: 500; letter-spacing: 0.08em; }
+
+.hero h1 {
+  font-size: clamp(2.35rem, 5.6vw, 4.15rem);
+  line-height: 1.04;
+  letter-spacing: -0.045em;
+  max-width: 15ch;
+  margin-bottom: 24px;
+}
+
+.lede {
+  max-width: 62ch;
+  font-size: clamp(1.02rem, 1.5vw, 1.18rem);
+  line-height: 1.65;
+  color: var(--muted);
+  margin-bottom: 32px;
+}
+.lede strong { color: var(--ink); font-weight: 500; }
+
+.hero-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 28px;
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 28px;
+}
+.hero-meta div { min-width: 0; }
+.hero-meta dt {
+  margin: 0 0 3px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.hero-meta dd {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 10px 18px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.btn:hover { background: #065F46; border-color: #065F46; color: #FFFFFF; }
+[data-theme="dark"] .btn { color: #06251C; }
+[data-theme="dark"] .btn:hover { background: #6EE7B7; border-color: #6EE7B7; color: #06251C; }
+
+.btn.ghost {
+  background: transparent;
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+.btn.ghost:hover { background: var(--surface); border-color: var(--faint); color: var(--ink); }
+
+.hero-plate { margin: 0; }
+.plate-frame {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #0F1923;
+  box-shadow: var(--shadow);
+}
+.plate-frame img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+.hero-plate figcaption {
+  margin-top: 12px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--faint);
+  letter-spacing: 0.01em;
+}
+
+/* ---------- notice ---------- */
+
+.notice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.notice-mark {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  padding-top: 2px;
+}
+.notice strong { color: var(--ink); font-weight: 600; }
+
+/* ---------- shell / toc ---------- */
+
+.shell {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: clamp(32px, 5vw, 64px);
+  padding: clamp(40px, 6vw, 64px) 0 72px;
+  align-items: start;
+}
+
+.toc {
+  position: sticky;
+  top: 92px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.toc-title {
+  margin: 0 0 12px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.toc ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-left: 1px solid var(--line);
+}
+.toc li { margin: 0; }
+.toc a {
+  display: flex;
+  gap: 8px;
+  padding: 5px 0 5px 14px;
+  margin-left: -1px;
+  border-left: 1px solid transparent;
+  color: var(--muted);
+  text-decoration: none;
+}
+.toc a:hover { color: var(--ink); border-left-color: var(--line-strong); }
+.toc .n {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--faint);
+  padding-top: 1px;
+}
+
+.mobile-toc { display: none; }
+
+.prose { min-width: 0; max-width: 760px; }
+
+.section {
+  padding: 0 0 48px;
+  margin: 0 0 48px;
+  border-bottom: 1px solid var(--line);
+  scroll-margin-top: 88px;
+}
+.section:last-of-type { border-bottom: 0; margin-bottom: 0; }
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.sec-num {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  padding-top: 3px;
+}
+.section h2 {
+  font-size: clamp(1.65rem, 2.8vw, 2.15rem);
+  letter-spacing: -0.03em;
+}
+.section h3 {
+  font-size: 1.06rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin: 28px 0 8px;
+}
+.section h3:first-child { margin-top: 0; }
+.section p { color: var(--muted); }
+.section p strong { color: var(--ink); font-weight: 600; }
+.section ul, .section ol { color: var(--muted); padding-left: 1.25em; margin: 0 0 1em; }
+.section li { margin: 0 0 0.5em; }
+.section li::marker { color: var(--faint); }
+.section li strong { color: var(--ink); font-weight: 600; }
+
+.split {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  margin: 28px 0 8px;
+}
+.split > div {
+  min-width: 0;
+  border-top: 1px solid var(--line-strong);
+  padding-top: 16px;
+}
+.split h3 { margin: 0 0 8px; font-size: 0.98rem; }
+.split p { font-size: 13.5px; line-height: 1.6; margin: 0; }
+
+.callout {
+  margin: 24px 0;
+  padding: 16px 18px;
+  border-left: 2px solid var(--accent-bright);
+  background: var(--accent-soft);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--ink);
+}
+.callout strong { display: block; margin-bottom: 3px; font-weight: 600; }
+.callout p { color: var(--muted); margin: 0; }
+.callout.warn {
+  border-left-color: var(--warn);
+  background: var(--warn-soft);
+}
+.callout.warn strong { color: var(--warn); }
+
+/* ---------- tables ---------- */
+
+.table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 24px 0;
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line);
+  -webkit-overflow-scrolling: touch;
+}
+table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.55;
+}
+caption {
+  text-align: left;
+  padding: 0 0 10px;
+  font-size: 11px;
+  color: var(--faint);
+}
+th {
+  padding: 11px 14px 10px 0;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--faint);
+  border-bottom: 1px solid var(--line);
+  vertical-align: bottom;
+}
+td {
+  padding: 12px 14px 12px 0;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  color: var(--muted);
+}
+tr:last-child td { border-bottom: 0; }
+td strong { color: var(--ink); font-weight: 600; }
+th:last-child, td:last-child { padding-right: 0; }
+
+.state { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-weight: 500; }
+.state .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-bright); flex: 0 0 auto; }
+.state.scoped .dot { background: var(--warn); }
+.state.out .dot { background: var(--faint); }
+
+/* ---------- architecture ---------- */
+
+.figure {
+  margin: 28px 0 8px;
+  padding: 0;
+}
+.figure-cap {
+  margin-top: 12px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--faint);
+}
+.figure-cap strong { color: var(--muted); font-weight: 600; }
+
+.arch {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 26px minmax(0, 1.25fr) 26px minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+  padding: 22px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.arch-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.arch-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 2px;
+}
+.arch-box {
+  background: var(--raised);
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  padding: 11px 12px;
+  min-width: 0;
+}
+.arch-box strong { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink); line-height: 1.3; }
+.arch-box span { display: block; font-size: 10.5px; line-height: 1.45; color: var(--muted); margin-top: 3px; }
+.arch-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 15px;
+}
+.arch-note {
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--faint);
+  line-height: 1.4;
+}
+
+/* ---------- pipeline ---------- */
+
+.pipeline {
+  list-style: none;
+  margin: 26px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  counter-reset: step;
+}
+.pipeline li {
+  position: relative;
+  margin: 0;
+  padding: 14px 12px 14px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--accent-bright);
+  border-radius: 0 0 var(--radius) var(--radius);
+  min-width: 0;
+}
+.pipeline .step-no {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 7px;
+}
+.pipeline h3 { font-size: 12.5px; margin: 0 0 5px; font-weight: 600; }
+.pipeline p { font-size: 11.5px; line-height: 1.5; margin: 0; color: var(--muted); }
+
+/* ---------- numbered flow ---------- */
+
+.flow { list-style: none; margin: 24px 0 0; padding: 0; border-top: 1px solid var(--line); }
+.flow li {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+  margin: 0;
+}
+.flow .n {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  padding-top: 2px;
+}
+.flow strong { display: block; font-size: 13px; color: var(--ink); font-weight: 600; margin-bottom: 2px; }
+.flow p { font-size: 13px; margin: 0; line-height: 1.55; }
+
+/* ---------- findings ---------- */
+
+.findings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 36px; margin-top: 10px; }
+.finding {
+  min-width: 0;
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+}
+.finding h3 { font-size: 0.98rem; margin: 0 0 8px; font-weight: 600; }
+.finding p { font-size: 13px; line-height: 1.6; margin: 0 0 7px; }
+.finding .tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-right: 6px;
+}
+.finding .res { color: var(--ink); }
+
+/* ---------- lists ---------- */
+
+.cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 36px;
+  margin: 22px 0;
+}
+.cols > div { min-width: 0; }
+.cols h3 { margin: 0 0 8px; }
+.checklist { list-style: none; padding: 0; margin: 0; }
+.checklist li {
+  position: relative;
+  padding: 7px 0 7px 22px;
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.checklist li::before {
+  position: absolute;
+  left: 0;
+  top: 7px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  content: "+";
+}
+.checklist.no li::before { content: "−"; color: var(--faint); }
+
+.limits { counter-reset: lim; list-style: none; padding: 0; margin: 18px 0 0; }
+.limits li {
+  counter-increment: lim;
+  position: relative;
+  padding: 11px 0 11px 34px;
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.limits li::before {
+  content: counter(lim, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--faint);
+}
+
+/* ---------- proof ---------- */
+
+.proof-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 24px 0;
+}
+.proof-card {
+  min-width: 0;
+  padding: 16px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.proof-card .k {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.proof-card strong { display: block; font-size: 14px; font-weight: 600; color: var(--ink); line-height: 1.35; margin-bottom: 4px; }
+.proof-card p { font-size: 12px; line-height: 1.55; margin: 0; }
+
+.repro { margin-top: 26px; }
+.repro h3 { margin-bottom: 6px; }
+.repro p { font-size: 13px; }
+
+.summary-box {
+  margin: 26px 0 0;
+  padding: 22px 0 0;
+  border-top: 1px solid var(--line-strong);
+}
+.summary-box p { font-size: 15px; line-height: 1.7; }
+
+.byline {
+  margin-top: 8px;
+  padding: 22px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.byline p { font-size: 13px; margin: 0 0 8px; }
+.byline p:last-child { margin-bottom: 0; }
+.byline strong { color: var(--ink); }
+
+/* ---------- footer ---------- */
+
+footer {
+  border-top: 1px solid var(--line);
+  padding: 28px 0 40px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--faint);
+}
+.foot-inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px 32px;
+  align-items: baseline;
+}
+.foot-inner p { margin: 0; }
+.foot-links { display: flex; flex-wrap: wrap; gap: 16px; }
+.foot-links a { color: var(--muted); }
+.foot-links a:hover { color: var(--accent); }
+
+.top-link {
+  display: inline-flex;
+  margin-top: 26px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  text-decoration: none;
+}
+.top-link:hover { color: var(--accent); }
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 960px) {
+  .hero { grid-template-columns: minmax(0, 1fr); }
+  .hero-plate { max-width: 420px; }
+  .hero h1 { max-width: 18ch; }
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .toc { display: none; }
+  .mobile-toc {
+    display: block;
+    margin-bottom: 34px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--raised);
+  }
+  .mobile-toc summary {
+    cursor: pointer;
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    list-style: none;
+  }
+  .mobile-toc summary::-webkit-details-marker { display: none; }
+  .mobile-toc summary::after { content: "+"; float: right; color: var(--accent); font-size: 14px; }
+  .mobile-toc[open] summary::after { content: "−"; }
+  .mobile-toc ol { list-style: none; margin: 0; padding: 0 16px 12px; }
+  .mobile-toc a {
+    display: flex;
+    gap: 8px;
+    padding: 7px 0;
+    font-size: 12.5px;
+    color: var(--muted);
+    text-decoration: none;
+    border-top: 1px solid var(--line);
+  }
+  .mobile-toc a:hover { color: var(--ink); }
+  .mobile-toc .n { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+  .prose { max-width: 100%; }
+  .head-nav { display: none; }
+  .theme-toggle { margin-left: auto; }
+}
+
+@media (max-width: 760px) {
+  .arch { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+  .arch-arrow { transform: rotate(90deg); padding: 2px 0; }
+  .pipeline { grid-template-columns: minmax(0, 1fr); }
+  .pipeline li { border-left: 2px solid var(--accent-bright); border-top: 1px solid var(--line); border-radius: 0 var(--radius) var(--radius) 0; }
+  .findings { grid-template-columns: minmax(0, 1fr); }
+  .findings .finding:first-child { border-top: 1px solid var(--line); }
+  .cols { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .proof-grid { grid-template-columns: minmax(0, 1fr); }
+  .split { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+}
+
+@media (max-width: 620px) {
+  .brand-sub, .brand-slash { display: none; }
+  .hero-meta { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .notice { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .notice-mark { padding-top: 0; }
+  .section { padding-bottom: 36px; margin-bottom: 36px; }
+  .section-head { gap: 10px; }
+  .hero { padding-top: 40px; }
+  .hero h1 { font-size: clamp(2.05rem, 10vw, 2.8rem); }
+  .theme-toggle .label { display: none; }
+  .theme-toggle { min-width: 44px; min-height: 44px; justify-content: center; padding: 0; }
+  .byline { padding: 18px; }
+  .foot-inner { flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+@media print {
+  .site-head, .toc, .mobile-toc, .hero-actions, .theme-toggle, .top-link { display: none !important; }
+  body { background: #FFFFFF; color: #000000; font-size: 11pt; }
+  .shell { display: block; padding: 0; }
+  .section { break-inside: avoid; }
+  a { color: #000000; text-decoration: underline; }
+  .hero { display: block; }
+  .hero-plate { max-width: 260px; }
+}
+</style>
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-head">
+  <div class="head-inner">
+    <a class="brand" href="#top" aria-label="AssetPulse publication, back to top">
+      <svg class="brand-mark" width="38" height="24" viewBox="0 0 48 30" fill="none" aria-hidden="true">
+        <polyline points="0,15 10,15 13,6 16,24 19,2 22,28 25,10 28,15 48,15" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+      <span class="brand-word">Asset<span class="pulse">Pulse</span></span>
+      <span class="brand-slash" aria-hidden="true">/</span>
+      <span class="brand-sub">Publication</span>
+    </a>
+
+    <nav class="head-nav" aria-label="Publication sections">
+      <a href="#context">Context</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#findings">Findings</a>
+      <a href="#proof">Evidence</a>
+    </nav>
+
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark theme" aria-pressed="false">
+      <span class="glyph" aria-hidden="true">☾</span>
+      <span class="label">Dark</span>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap" id="top">
+
+    <section class="hero" aria-labelledby="hero-title">
+      <div>
+        <p class="eyebrow">
+          <span>Product documentation</span>
+          <span class="sep" aria-hidden="true">/</span>
+          <span class="meta">Reviewed 20 October 2026</span>
+        </p>
+
+        <h1 id="hero-title">An asset register your compliance evidence can rely on.</h1>
+
+        <p class="lede">
+          AssetPulse is a self-hosted inventory and monthly compliance platform. It combines a
+          <strong>Flask API</strong>, a <strong>React dashboard</strong>, an Excel import pipeline,
+          role-based access, TOTP MFA, audit logging, and a packaging path for offline Linux hosts.
+          This page records what was built, how it works, what was verified, and what the system
+          does not claim.
+        </p>
+
+        <dl class="hero-meta">
+          <div>
+            <dt>Scope</dt>
+            <dd>Inventory, compliance, access control, deployment</dd>
+          </div>
+          <div>
+            <dt>Stack</dt>
+            <dd>Flask · React 19 · PostgreSQL</dd>
+          </div>
+          <div>
+            <dt>State</dt>
+            <dd>Implemented; cloud and on-premise paths documented</dd>
+          </div>
+          <div>
+            <dt>Source reviewed</dt>
+            <dd>Commit <span class="mono">4615365</span> · 5 October 2026</dd>
+          </div>
+        </dl>
+
+        <div class="hero-actions">
+          <a class="btn" href="#context">Read the record</a>
+          <a class="btn ghost" href="#proof">Jump to evidence</a>
+        </div>
+      </div>
+
+      <figure class="hero-plate">
+        <div class="plate-frame">
+          <img src="assets/brand-assetpulse.png" width="900" height="900"
+               alt="AssetPulse brand mark: a white pulse waveform above the words Asset Pulse, with Pulse in green, on a dark navy square.">
+        </div>
+        <figcaption>Official AssetPulse brand mark. Dark navy field, white pulse, green “Pulse”.</figcaption>
+      </figure>
+    </section>
+
+    <div class="notice">
+      <span class="notice-mark" aria-hidden="true">NOTE</span>
+      <p>
+        <strong>This is a technical publication, not a product landing page.</strong>
+        Statements are scoped to the repository state reviewed above. The repository is private;
+        file paths are cited as evidence, not linked. No credentials, customer records, license keys,
+        or live database contents are reproduced here.
+      </p>
+    </div>
+
+    <div class="shell">
+      <nav class="toc" aria-label="Contents">
+        <p class="toc-title">Contents</p>
+        <ol>
+          <li><a href="#context"><span class="n">01</span> Context</a></li>
+          <li><a href="#built"><span class="n">02</span> What was built</a></li>
+          <li><a href="#architecture"><span class="n">03</span> Architecture</a></li>
+          <li><a href="#import"><span class="n">04</span> Import pipeline</a></li>
+          <li><a href="#compliance"><span class="n">05</span> Compliance loop</a></li>
+          <li><a href="#security"><span class="n">06</span> Security model</a></li>
+          <li><a href="#deployment"><span class="n">07</span> Deployment</a></li>
+          <li><a href="#findings"><span class="n">08</span> Findings</a></li>
+          <li><a href="#limits"><span class="n">09</span> Scope &amp; limits</a></li>
+          <li><a href="#proof"><span class="n">10</span> Evidence</a></li>
+          <li><a href="#summary"><span class="n">11</span> Summary</a></li>
+          <li><a href="#authors"><span class="n">12</span> Authors</a></li>
+        </ol>
+      </nav>
+
+      <article class="prose">
+
+        <details class="mobile-toc">
+          <summary>Contents</summary>
+          <ol>
+            <li><a href="#context"><span class="n">01</span> Context</a></li>
+            <li><a href="#built"><span class="n">02</span> What was built</a></li>
+            <li><a href="#architecture"><span class="n">03</span> Architecture</a></li>
+            <li><a href="#import"><span class="n">04</span> Import pipeline</a></li>
+            <li><a href="#compliance"><span class="n">05</span> Compliance loop</a></li>
+            <li><a href="#security"><span class="n">06</span> Security model</a></li>
+            <li><a href="#deployment"><span class="n">07</span> Deployment</a></li>
+            <li><a href="#findings"><span class="n">08</span> Findings</a></li>
+            <li><a href="#limits"><span class="n">09</span> Scope &amp; limits</a></li>
+            <li><a href="#proof"><span class="n">10</span> Evidence</a></li>
+            <li><a href="#summary"><span class="n">11</span> Summary</a></li>
+            <li><a href="#authors"><span class="n">12</span> Authors</a></li>
+          </ol>
+        </details>
+
+        <section class="section" id="context">
+          <div class="section-head">
+            <span class="sec-num">01</span>
+            <h2>Context</h2>
+          </div>
+
+          <p>
+            The system of record is often a spreadsheet. An endpoint list is exported from an MDM,
+            merged with a server list, mailed to a compliance owner, and checked once a month. The
+            file is useful for a week and stale by the next review.
+          </p>
+
+          <div class="split">
+            <div>
+              <h3>Inventory drifts</h3>
+              <p>
+                The same host can appear twice under different names, addresses, or casing.
+                Decommissioned machines stay in the list because removing them is somebody
+                else’s task.
+              </p>
+            </div>
+            <div>
+              <h3>Evidence is manual</h3>
+              <p>
+                A monthly check depends on someone remembering which tool covers which address,
+                then copying the result back into the sheet without a record of who changed it.
+              </p>
+            </div>
+            <div>
+              <h3>Access is coarse</h3>
+              <p>
+                A shared workbook cannot enforce who may delete an asset, unlock an account, or
+                see the audit trail. Every collaborator can do everything.
+              </p>
+            </div>
+          </div>
+
+          <p style="margin-top:26px">
+            AssetPulse’s goal was narrower than an MDM, a vulnerability scanner, or a SIEM. Keep a
+            reliable register, make messy imports survivable, and persist the result of a monthly
+            compliance check onto the asset record with an audit trail. That narrowness is the
+            design.
+          </p>
+        </section>
+
+        <section class="section" id="built">
+          <div class="section-head">
+            <span class="sec-num">02</span>
+            <h2>What was built</h2>
+          </div>
+
+          <p>
+            The product is a single-organization web application. The table below is the functional
+            inventory; the following sections explain the parts that carry the most engineering
+            weight.
+          </p>
+
+          <div class="table-wrap">
+            <table>
+              <caption>Functional inventory as observed in the reviewed source.</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Area</th>
+                  <th scope="col">Capability</th>
+                  <th scope="col">State</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Assets</strong></td>
+                  <td>CRUD for name, hostname, IP address (IPv4/IPv6 validation), category, status, tags, notes, endpoint type, and OS version.</td>
+                  <td><span class="state"><span class="dot" aria-hidden="true"></span>Implemented</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Lifecycle</strong></td>
+                  <td>Mark assets online, offline, powered off, or decommissioned, individually or in bulk.</td>
+                  <td><span class="state"><span class="dot" aria-hidden="true"></span>Implemented</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Import</strong></td>
+                  <td>Excel pipeline with parse, column mapping, validation, duplicate review, and commit. Handles multiple addresses per cell and creates unknown categories.</td>
+                  <td><span class="state"><span class="dot" aria-hidden="true"></span>Implemented</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Compliance</strong></td>
+                  <td>Monthly checks against registered tools using shared IP matching; writes status, tool, and date back to each asset.</td>
+                  <td><span class="state"><span class="dot" aria-hidden="true"></span>Implemented</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Visibility</strong></td>
+                  <td>Dashboard statistics, asset audit timeline, and Recharts visualisations; filters for endpoint type, OS version, tags, and free text.</td>
+                  <td><span class="state"><span class="dot" aria-hidden="true"></span>Implemented</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Access</strong></td>
+                  <td>JWT authentication, per-user TOTP MFA, admin/user roles, lockout, password reset, account unlock, and granular delete/unlock powers.</td>
+                  <td><span class="state"><span class="dot" aria-hidden="true"></span>Implemented</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Audit</strong></td>
+                  <td>Append-only records for critical actions, including asset changes, imports, logins, and tag edits.</td>
+                  <td><span class="state scoped"><span class="dot" aria-hidden="true"></span>Application-level</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Licensing</strong></td>
+                  <td>RS256 JWT license verified at application startup; unlicensed instances are refused.</td>
+                  <td><span class="state"><span class="dot" aria-hidden="true"></span>Implemented</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Deployment</strong></td>
+                  <td>Docker Compose with PostgreSQL, Vercel/Neon cloud path, air-gapped image bundle, PyInstaller binary behind Waitress, Nginx front end.</td>
+                  <td><span class="state"><span class="dot" aria-hidden="true"></span>Implemented</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Out of scope</strong></td>
+                  <td>Agent-based discovery, vulnerability scanning, patch management, SSO/SCIM, multi-tenancy, and formal certification.</td>
+                  <td><span class="state out"><span class="dot" aria-hidden="true"></span>Not claimed</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout">
+            <strong>One register, one organization</strong>
+            <p>
+              AssetPulse is not a multi-tenant SaaS. The deployment model assumes one organization
+              controls the server, the database, and the license. That assumption simplifies the
+              authorization model and is stated here so it is not mistaken for a missing feature.
+            </p>
+          </div>
+        </section>
+
+        <section class="section" id="architecture">
+          <div class="section-head">
+            <span class="sec-num">03</span>
+            <h2>Architecture</h2>
+          </div>
+
+          <p>
+            The browser never talks to the database directly. A React single-page application is
+            served by Nginx, calls the Flask API over HTTPS, and receives JSON. The API owns
+            authentication, authorization, validation, the import transaction, the compliance
+            calculation, and the audit write. SQLAlchemy is the only path to the store.
+          </p>
+
+          <figure class="figure">
+            <div class="arch" role="img" aria-label="Architecture diagram: a React client behind Nginx calls a Flask API containing authentication, asset routes, import engine, compliance engine, audit, and license gate. The API reads and writes PostgreSQL or SQLite, and reads import workbooks and an RS256 public key.">
+              <div class="arch-col">
+                <span class="arch-label">Client</span>
+                <div class="arch-box">
+                  <strong>React 19 SPA</strong>
+                  <span>Vite build · dashboard · import wizard · audit timeline</span>
+                </div>
+                <div class="arch-box">
+                  <strong>Nginx</strong>
+                  <span>Static assets · TLS termination · API proxy</span>
+                </div>
+                <div class="arch-note">Browser · HTTPS</div>
+              </div>
+
+              <div class="arch-arrow" aria-hidden="true">→</div>
+
+              <div class="arch-col">
+                <span class="arch-label">Application</span>
+                <div class="arch-box">
+                  <strong>Flask API</strong>
+                  <span>Auth and RBAC · asset routes · audit</span>
+                </div>
+                <div class="arch-box">
+                  <strong>Import engine</strong>
+                  <span>Parse → map → validate → review → commit</span>
+                </div>
+                <div class="arch-box">
+                  <strong>Compliance engine</strong>
+                  <span>IP matching · status write-back</span>
+                </div>
+                <div class="arch-box">
+                  <strong>License gate</strong>
+                  <span>RS256 JWT checked at startup</span>
+                </div>
+              </div>
+
+              <div class="arch-arrow" aria-hidden="true">→</div>
+
+              <div class="arch-col">
+                <span class="arch-label">State &amp; inputs</span>
+                <div class="arch-box">
+                  <strong>PostgreSQL / SQLite</strong>
+                  <span>Assets · users · compliance results · audit events</span>
+                </div>
+                <div class="arch-box">
+                  <strong>Excel workbooks</strong>
+                  <span>Operator-supplied .xlsx imports</span>
+                </div>
+                <div class="arch-box">
+                  <strong>License public key</strong>
+                  <span>Verification material bundled with the build</span>
+                </div>
+              </div>
+            </div>
+            <figcaption class="figure-cap">
+              <strong>Figure 1.</strong> Runtime shape. PostgreSQL is the Docker path; SQLite is the
+              development default. The license check runs before the application serves requests.
+            </figcaption>
+          </figure>
+
+          <h3>Why this shape</h3>
+          <ul>
+            <li><strong>Server-side validation is the boundary.</strong> The import wizard can suggest and override mappings, but the API re-validates every row before commit.</li>
+            <li><strong>Compliance is calculated where the data lives.</strong> The engine runs against the database, not against a browser copy, so the write-back is atomic with the result.</li>
+            <li><strong>Packaging is part of the architecture.</strong> The same application is shipped as containers, a standalone binary, or a serverless function; each path has different constraints.</li>
+          </ul>
+        </section>
+
+        <section class="section" id="import">
+          <div class="section-head">
+            <span class="sec-num">04</span>
+            <h2>Import pipeline</h2>
+          </div>
+
+          <p>
+            Imports are treated as a reviewable transaction, not a file upload that writes rows
+            immediately. The pipeline is deliberately split so a validation failure does not become
+            a partial write, and so the operator sees duplicates before they become permanent.
+          </p>
+
+          <ol class="pipeline" aria-label="Five-stage import pipeline">
+            <li>
+              <span class="step-no">01 / PARSE</span>
+              <h3>Read</h3>
+              <p>Workbook rows are read and returned as raw values with a suggested header mapping.</p>
+            </li>
+            <li>
+              <span class="step-no">02 / MAP</span>
+              <h3>Map</h3>
+              <p>Known headers are matched; the operator can override any column, including endpoint type and OS version.</p>
+            </li>
+            <li>
+              <span class="step-no">03 / VALIDATE</span>
+              <h3>Check</h3>
+              <p>Addresses are normalized, categories resolved, and duplicates detected per row.</p>
+            </li>
+            <li>
+              <span class="step-no">04 / REVIEW</span>
+              <h3>Review</h3>
+              <p>Duplicates are surfaced first. A confirmation is required before non-duplicate rows are committed.</p>
+            </li>
+            <li>
+              <span class="step-no">05 / COMMIT</span>
+              <h3>Write</h3>
+              <p>Assets are inserted or updated; tag edits and import actions are recorded in the audit log.</p>
+            </li>
+          </ol>
+
+          <div class="callout">
+            <strong>What the edge cases taught</strong>
+            <p>
+              Real spreadsheets do not arrive clean. Three changes came directly from import
+              failures: extract the primary address from a multi-IP cell, create unknown categories
+              during validation instead of rejecting the batch, and make duplicate review an explicit
+              step rather than a silent merge.
+            </p>
+          </div>
+
+          <h3>Address normalization</h3>
+          <p>
+            A cell such as <code>10.1.100.28, 10.81.0.28</code> is common in exports that join
+            management and production networks. The normalizer extracts and validates the first
+            address as the primary IP instead of rejecting the row. The original cell is not
+            silently discarded from the register; the operator can still see the source workbook.
+          </p>
+
+          <h3>Duplicate handling</h3>
+          <p>
+            The importer does not guess which of two similar rows is canonical. It flags duplicates,
+            switches the wizard to the Duplicates tab, and asks for confirmation before adding the
+            remaining assets. Updating an existing asset is a deliberate choice, not an automatic
+            side effect.
+          </p>
+        </section>
+
+        <section class="section" id="compliance">
+          <div class="section-head">
+            <span class="sec-num">05</span>
+            <h2>Compliance loop</h2>
+          </div>
+
+          <p>
+            Compliance is a monthly checkpoint, not a live scanner. The value of the module is that
+            the result is attached to the asset record and can be defended later.
+          </p>
+
+          <ol class="flow">
+            <li>
+              <span class="n">01</span>
+              <div>
+                <strong>Register the tool</strong>
+                <p>The compliance owner records the tool and the address range it is expected to cover.</p>
+              </div>
+            </li>
+            <li>
+              <span class="n">02</span>
+              <div>
+                <strong>Run the check</strong>
+                <p>The engine compares inventory records to the registered tool using shared IP-matching logic.</p>
+              </div>
+            </li>
+            <li>
+              <span class="n">03</span>
+              <div>
+                <strong>Write back the result</strong>
+                <p>Last status, tool, and check date are persisted on the asset, so the register carries the evidence.</p>
+              </div>
+            </li>
+            <li>
+              <span class="n">04</span>
+              <div>
+                <strong>Record the action</strong>
+                <p>The check and the write-back are recorded in the audit trail with the acting user and timestamp.</p>
+              </div>
+            </li>
+          </ol>
+
+          <div class="callout warn">
+            <strong>Scope boundary</strong>
+            <p>
+              A compliant status means the last run matched the asset to a registered tool. It is
+              not continuous monitoring, it does not prove the tool is healthy, and it does not
+              replace the tool’s own console. The module records a checkpoint; it does not create
+              one.
+            </p>
+          </div>
+        </section>
+
+        <section class="section" id="security">
+          <div class="section-head">
+            <span class="sec-num">06</span>
+            <h2>Security model</h2>
+          </div>
+
+          <p>
+            The controls below are implemented in the reviewed source. The boundary column is as
+            important as the control: it states what the mechanism does not cover, so an operator
+            does not mistake an application feature for an assurance.
+          </p>
+
+          <div class="table-wrap">
+            <table>
+              <caption>Security controls and their stated boundaries.</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Control</th>
+                  <th scope="col">Implementation</th>
+                  <th scope="col">Boundary</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Authentication</strong></td>
+                  <td>Signed JWT tokens containing user ID and role; 24-hour expiry; a 401 forces the client to clear state.</td>
+                  <td>Token lifetime is fixed; no refresh-token rotation is described.</td>
+                </tr>
+                <tr>
+                  <td><strong>Idle session</strong></td>
+                  <td>Frontend activity listeners expire the session after a configurable window (default 15 minutes).</td>
+                  <td>Enforced in the client; it is not a server-side absolute session cap.</td>
+                </tr>
+                <tr>
+                  <td><strong>MFA</strong></td>
+                  <td>TOTP setup, verification, and disable flows per user.</td>
+                  <td>Available per user; the repository does not show a global mandatory-MFA switch.</td>
+                </tr>
+                <tr>
+                  <td><strong>Authorization</strong></td>
+                  <td><code>admin</code> and <code>user</code> roles, plus granular <code>can_delete_assets</code> and <code>can_unlock_accounts</code> flags.</td>
+                  <td>Two broad roles and two flags; there is no per-asset ACL.</td>
+                </tr>
+                <tr>
+                  <td><strong>Brute force</strong></td>
+                  <td>Failed attempts are counted; three failures lock the account for 15 minutes. An admin can unlock it.</td>
+                  <td>Lockout state lives in the user record; it is not a network-level rate limit.</td>
+                </tr>
+                <tr>
+                  <td><strong>Password policy</strong></td>
+                  <td>HIBP k-anonymity check with a graceful fallback when the host has no internet access.</td>
+                  <td>Offline deployments log a warning and allow the flow rather than block operations.</td>
+                </tr>
+                <tr>
+                  <td><strong>Licensing</strong></td>
+                  <td>RS256 JWT verified at startup; unlicensed instances are refused.</td>
+                  <td>An operational gate, not a security boundary against a modified build.</td>
+                </tr>
+                <tr>
+                  <td><strong>Audit</strong></td>
+                  <td>Append-only event records for critical actions.</td>
+                  <td>Application-level append-only; not WORM storage or a remote audit sink.</td>
+                </tr>
+                <tr>
+                  <td><strong>Secrets</strong></td>
+                  <td>Environment variables; <code>.env.example</code> ships with placeholders.</td>
+                  <td>Operators must replace defaults; no secrets-manager integration is included.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section" id="deployment">
+          <div class="section-head">
+            <span class="sec-num">07</span>
+            <h2>Deployment</h2>
+          </div>
+
+          <p>
+            Deployment is treated as three operating models, not one script with flags. The
+            constraints that matter are connectivity, update path, and who controls the host.
+          </p>
+
+          <div class="proof-grid">
+            <div class="proof-card">
+              <span class="k">Connected / Docker</span>
+              <strong>GitOps on a Linux host</strong>
+              <p>Clone, set <code>.env</code>, run <code>deploy/deploy.sh</code>. The stack builds PostgreSQL, the Flask backend, and the Nginx front end, then serves on port 8443.</p>
+            </div>
+            <div class="proof-card">
+              <span class="k">Air-gapped</span>
+              <strong>Images as a transferable bundle</strong>
+              <p>Build on a connected runner, <code>docker save</code> the images, transfer the archive, <code>docker load</code> on the isolated host, then start the same Compose file.</p>
+            </div>
+            <div class="proof-card">
+              <span class="k">Cloud</span>
+              <strong>Vercel + managed PostgreSQL</strong>
+              <p>Static frontend, Flask serverless function, and a managed Postgres connection. Useful as a reference deployment; not a claim of production scale.</p>
+            </div>
+          </div>
+
+          <h3>Packaging notes that mattered</h3>
+          <ul>
+            <li><strong>PyInstaller and Waitress.</strong> The backend binary wraps Flask in a Waitress WSGI server on port 5000 so the process stays alive and serves traffic inside the container. Hidden imports for <code>psycopg2</code> and <code>waitress</code> are bundled.</li>
+            <li><strong>Nginx DNS resolution.</strong> A backend restart could take the proxy down. The Nginx configuration uses Docker’s internal resolver with a 30-second validity window, so the upstream is re-resolved instead of cached forever.</li>
+            <li><strong>GLIBC compatibility.</strong> A mismatch produced <code>GLIBC_2.38 not found</code>. Builder and runtime stages are pinned to <code>python:3.12-slim</code> to keep the binary and the base image aligned.</li>
+            <li><strong>Database migration.</strong> Moving from the cloud deployment to an on-premise host uses an export, a transfer, and an import script that skips existing rows with <code>ON CONFLICT DO NOTHING</code>.</li>
+          </ul>
+        </section>
+
+        <section class="section" id="findings">
+          <div class="section-head">
+            <span class="sec-num">08</span>
+            <h2>Findings</h2>
+          </div>
+
+          <p>
+            These are engineering findings from building and operating the system, not security
+            audit results. Each one changed the implementation.
+          </p>
+
+          <div class="findings">
+            <article class="finding">
+              <h3>Multi-address cells failed validation</h3>
+              <p><span class="tag">Symptom</span>Rows with two addresses in one cell were rejected as “Invalid IP format”.</p>
+              <p class="res"><span class="tag">Resolution</span>Extract and validate the first address as the primary IP; keep the source row visible rather than discarding it.</p>
+            </article>
+
+            <article class="finding">
+              <h3>Unknown categories blocked the batch</h3>
+              <p><span class="tag">Symptom</span>A new label such as <code>Database</code> failed validation and stopped the import.</p>
+              <p class="res"><span class="tag">Resolution</span>Create unrecognized categories during validation, then commit the batch.</p>
+            </article>
+
+            <article class="finding">
+              <h3>Duplicates were ambiguous</h3>
+              <p><span class="tag">Symptom</span>Similar rows could be merged or added without the operator seeing the decision.</p>
+              <p class="res"><span class="tag">Resolution</span>Auto-focus the Duplicates tab and require an explicit confirmation before committing non-duplicate rows.</p>
+            </article>
+
+            <article class="finding">
+              <h3>New fields required a safe migration</h3>
+              <p><span class="tag">Symptom</span>Endpoint type, OS version, and tags were not in the original asset table.</p>
+              <p class="res"><span class="tag">Resolution</span>On startup, inspect the asset table and add missing columns inline, preserving existing test data; extend the audit log to tag edits.</p>
+            </article>
+
+            <article class="finding">
+              <h3>The packaged binary exited immediately</h3>
+              <p><span class="tag">Symptom</span>The PyInstaller build started and stopped; the container had no live process.</p>
+              <p class="res"><span class="tag">Resolution</span>Wrap the Flask app in Waitress on port 5000 and bundle the required hidden imports.</p>
+            </article>
+
+            <article class="finding">
+              <h3>Nginx died when the backend restarted</h3>
+              <p><span class="tag">Symptom</span>A proxy upstream cached at startup made the front end unavailable during a backend restart.</p>
+              <p class="res"><span class="tag">Resolution</span>Use Docker’s internal DNS resolver with a 30-second validity window so the upstream is refreshed.</p>
+            </article>
+
+            <article class="finding">
+              <h3>Base-image mismatch broke the binary</h3>
+              <p><span class="tag">Symptom</span>The runtime reported <code>GLIBC_2.38 not found</code>.</p>
+              <p class="res"><span class="tag">Resolution</span>Pin builder and runtime stages to <code>python:3.12-slim</code>.</p>
+            </article>
+
+            <article class="finding">
+              <h3>Offline password checks need a fallback</h3>
+              <p><span class="tag">Symptom</span>HIBP lookups are impossible on an air-gapped host.</p>
+              <p class="res"><span class="tag">Resolution</span>Log a warning and allow the flow rather than blocking authentication; document the reduced assurance.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" id="limits">
+          <div class="section-head">
+            <span class="sec-num">09</span>
+            <h2>Scope &amp; limits</h2>
+          </div>
+
+          <div class="cols">
+            <div>
+              <h3>In scope</h3>
+              <ul class="checklist">
+                <li>Single-organization asset register</li>
+                <li>Asset CRUD, lifecycle, categories, tags</li>
+                <li>Excel import with mapping and duplicate review</li>
+                <li>Monthly compliance write-back</li>
+                <li>JWT authentication, TOTP, RBAC, audit</li>
+                <li>Licensed Docker, air-gapped, and cloud paths</li>
+              </ul>
+            </div>
+            <div>
+              <h3>Not claimed</h3>
+              <ul class="checklist no">
+                <li>Agent-based discovery or MDM</li>
+                <li>Vulnerability scanning or patch management</li>
+                <li>Continuous compliance monitoring</li>
+                <li>SSO, SCIM, or multi-tenancy</li>
+                <li>SIEM integration or WORM audit storage</li>
+                <li>External certification or penetration test</li>
+              </ul>
+            </div>
+          </div>
+
+          <h3>Limitations</h3>
+          <ol class="limits">
+            <li><strong>Evidence freshness depends on the last run.</strong> A green status is only as current as the compliance check that produced it.</li>
+            <li><strong>Duplicate resolution is human-reviewed.</strong> The importer flags; it does not merge identities automatically.</li>
+            <li><strong>Audit immutability is application-level.</strong> A database administrator can still alter rows directly.</li>
+            <li><strong>SQLite is the development default.</strong> PostgreSQL is the Docker path; the two are not interchangeable at scale.</li>
+            <li><strong>No independent assurance.</strong> The repository contains no external penetration-test report or certification evidence.</li>
+            <li><strong>License checks assume an untampered build.</strong> They are a commercial gate, not a defense against a modified binary.</li>
+            <li><strong>The public cloud target is a reference deployment.</strong> It is not presented as evidence of production capacity or uptime.</li>
+          </ol>
+        </section>
+
+        <section class="section" id="proof">
+          <div class="section-head">
+            <span class="sec-num">10</span>
+            <h2>Evidence</h2>
+          </div>
+
+          <p>
+            The repository is private, so file paths are cited rather than linked. Each entry is a
+            place where the behaviour described above can be inspected. This is evidence of
+            implementation, not an audit opinion.
+          </p>
+
+          <div class="table-wrap">
+            <table>
+              <caption>Implementation evidence in the reviewed repository.</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Path</th>
+                  <th scope="col">What it demonstrates</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>backend/import_engine.py</code></td>
+                  <td>Parse, validate, and commit stages; column mapping; duplicate handling; multi-IP extraction.</td>
+                </tr>
+                <tr>
+                  <td><code>backend/compliance.py</code></td>
+                  <td>IP-matching logic and persistence of the last status, tool, and check date.</td>
+                </tr>
+                <tr>
+                  <td><code>backend/license.py</code></td>
+                  <td>RS256 verification and the startup gate.</td>
+                </tr>
+                <tr>
+                  <td><code>backend/models.py</code></td>
+                  <td>Asset, user, compliance, and audit schema, including endpoint type, OS version, and tags.</td>
+                </tr>
+                <tr>
+                  <td><code>docker-compose.yml</code></td>
+                  <td>PostgreSQL, backend, and frontend services; the Docker operating model.</td>
+                </tr>
+                <tr>
+                  <td><code>deploy/install_offline.sh</code></td>
+                  <td>The air-gapped installation path.</td>
+                </tr>
+                <tr>
+                  <td><code>deploy/nginx.conf</code></td>
+                  <td>Docker DNS resolver and reverse-proxy configuration.</td>
+                </tr>
+                <tr>
+                  <td><code>servers.xlsx</code>, <code>Linux.xlsx</code>, <code>VPCs.xlsx</code></td>
+                  <td>Real workbooks used to exercise the import pipeline during development.</td>
+                </tr>
+                <tr>
+                  <td><code>walkthrough.md</code></td>
+                  <td>The change record for endpoint categorization, inline tagging, and duplicate review.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="repro">
+            <h3>Reproduce the Docker path</h3>
+            <p>The repository ships an environment template with placeholders. Replace them before starting the stack.</p>
+            <pre><code>cp .env.example .env
+# set POSTGRES_PASSWORD, JWT_SECRET_KEY, and LICENSE_KEY
+docker compose up -d --build
+# open http://&lt;host&gt;:8443</code></pre>
+          </div>
+
+          <div class="repro">
+            <h3>Inspect the import contract</h3>
+            <p>The import is split into API calls rather than a single upload that writes immediately.</p>
+            <pre><code>POST /api/assets/import/parse
+POST /api/assets/import/validate
+POST /api/assets/import/commit
+POST /api/compliance/check
+GET  /api/audit-logs</code></pre>
+          </div>
+
+          <h3>What this evidence proves</h3>
+          <ul>
+            <li>The import, compliance, access-control, audit, and licensing paths exist in code and are connected to the data model.</li>
+            <li>Three real spreadsheet shapes were used during development, and the edge cases they exposed changed the implementation.</li>
+            <li>Two deployment models are documented and packaged: Docker and an offline image bundle.</li>
+          </ul>
+
+          <h3>What it does not prove</h3>
+          <ul>
+            <li>That the system has been independently reviewed, certified, or tested against a formal threat model.</li>
+            <li>That it scales to a given inventory size or request rate.</li>
+            <li>That the importer handles every possible workbook layout or encoding.</li>
+            <li>That the public cloud target is the production application; it is the marketing surface.</li>
+          </ul>
+
+          <p style="margin-top:24px">
+            Reference deployment:
+            <a href="https://assetpulse-seven.vercel.app" rel="noopener" target="_blank">assetpulse-seven.vercel.app</a>
+            <span aria-hidden="true"> ↗</span>
+          </p>
+        </section>
+
+        <section class="section" id="summary">
+          <div class="section-head">
+            <span class="sec-num">11</span>
+            <h2>Summary</h2>
+          </div>
+
+          <div class="summary-box">
+            <p>
+              AssetPulse is a narrow system with a clear job: keep an asset register clean enough
+              that a monthly compliance result can be attached to it and defended later.
+            </p>
+            <p>
+              The build is complete across inventory, import, compliance, access control, audit,
+              licensing, and two deployment models. The interesting engineering is at the edges:
+              messy spreadsheets, restarts, image packaging, and the difference between recording a
+              checkpoint and claiming continuous assurance.
+            </p>
+            <p>
+              The next evidence gaps are a repeatable test suite and an independent review. Until
+              those exist, the correct description is “implemented and documented”, not “verified
+              by a third party”.
+            </p>
+          </div>
+
+          <a class="top-link" href="#top">Back to top ↑</a>
+        </section>
+
+        <section class="section" id="authors">
+          <div class="section-head">
+            <span class="sec-num">12</span>
+            <h2>Authors &amp; attribution</h2>
+          </div>
+
+          <div class="byline">
+            <p><strong>Written by</strong> David Idemudia Odige.</p>
+            <p>
+              Source reviewed at commit <span class="mono">4615365</span> (5 October 2026).
+              Publication prepared 20 October 2026.
+            </p>
+            <p>
+              AssetPulse is proprietary software. This page publishes architecture, method, and
+              engineering findings; it does not publish implementation secrets, credentials, or
+              customer data.
+            </p>
+            <p>
+              <a href="https://github.com/OdigieDavidIdemudia" rel="author noopener" target="_blank">github.com/OdigieDavidIdemudia</a>
+            </p>
+          </div>
+        </section>
+
+      </article>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <p>AssetPulse publication · Documentation, not marketing.</p>
+    <div class="foot-links">
+      <a href="https://assetpulse-seven.vercel.app" rel="noopener" target="_blank">Reference deployment</a>
+      <a href="#top">Back to top</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var button = document.getElementById('theme-toggle');
+  if (!button) return;
+
+  var label = button.querySelector('.label');
+  var glyph = button.querySelector('.glyph');
+  var media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+  function stored() {
+    try { return localStorage.getItem('assetpulse-publication-theme'); }
+    catch (e) { return null; }
+  }
+
+  function apply(theme, persist) {
+    root.setAttribute('data-theme', theme);
+    var dark = theme === 'dark';
+    button.setAttribute('aria-pressed', dark ? 'true' : 'false');
+    button.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+    if (label) label.textContent = dark ? 'Light' : 'Dark';
+    if (glyph) glyph.textContent = dark ? '☀' : '☾';
+    if (persist) {
+      try { localStorage.setItem('assetpulse-publication-theme', theme); } catch (e) {}
+    }
+  }
+
+  apply(root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light', false);
+
+  button.addEventListener('click', function () {
+    var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    apply(next, true);
+  });
+
+  if (media) {
+    var onChange = function (event) {
+      if (!stored()) apply(event.matches ? 'dark' : 'light', false);
+    };
+    if (media.addEventListener) media.addEventListener('change', onChange);
+    else if (media.addListener) media.addListener(onChange);
+  }
+})();
+</script>
+
+</body>
+</html>
