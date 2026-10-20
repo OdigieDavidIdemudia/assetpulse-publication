@@ -1032,7 +1032,7 @@ footer {
       <span class="notice-mark" aria-hidden="true">NOTE</span>
       <p>
         <strong>This is a technical publication, not a product landing page.</strong>
-        Statements are scoped to the repository state reviewed above. The repository is private;
+        Statements are scoped to the repository state reviewed above. The product repository is private;
         file paths are cited as evidence, not linked. No credentials, customer records, license keys,
         or live database contents are reproduced here.
       </p>
@@ -1172,7 +1172,7 @@ footer {
                 </tr>
                 <tr>
                   <td><strong>Access</strong></td>
-                  <td>JWT authentication, per-user TOTP MFA, admin/user roles, lockout, password reset, account unlock, and granular delete/unlock powers.</td>
+                  <td>JWT authentication, TOTP MFA with per-user setup and a configurable global requirement, admin/user roles, lockout, password reset, account unlock, and granular delete/unlock powers.</td>
                   <td><span class="state"><span class="dot" aria-hidden="true"></span>Implemented</span></td>
                 </tr>
                 <tr>
@@ -1182,7 +1182,7 @@ footer {
                 </tr>
                 <tr>
                   <td><strong>Licensing</strong></td>
-                  <td>RS256 JWT license verified at application startup; unlicensed instances are refused.</td>
+                  <td>RS256 JWT license verified at application startup; on-premise instances exit on failure. The Vercel path skips the check.</td>
                   <td><span class="state"><span class="dot" aria-hidden="true"></span>Implemented</span></td>
                 </tr>
                 <tr>
@@ -1437,7 +1437,12 @@ footer {
                 <tr>
                   <td><strong>Authentication</strong></td>
                   <td>Signed JWT tokens containing user ID and role; 24-hour expiry; a 401 forces the client to clear state.</td>
-                  <td>Token lifetime is fixed; no refresh-token rotation is described.</td>
+                  <td>Token lifetime is fixed; no refresh-token rotation is described. The signing key comes from <code>JWT_SECRET_KEY</code>, with a development fallback that must be replaced.</td>
+                </tr>
+                <tr>
+                  <td><strong>Bootstrap</strong></td>
+                  <td>First run creates <code>admin</code> with password <code>admin</code> and full permissions; later starts re-assert those permissions.</td>
+                  <td>Development bootstrap. Change the password before exposure; no forced first-login rotation is shown.</td>
                 </tr>
                 <tr>
                   <td><strong>Idle session</strong></td>
@@ -1446,8 +1451,8 @@ footer {
                 </tr>
                 <tr>
                   <td><strong>MFA</strong></td>
-                  <td>TOTP setup, verification, and disable flows per user.</td>
-                  <td>Available per user; the repository does not show a global mandatory-MFA switch.</td>
+                  <td>TOTP setup, verification, and disable flows per user, plus a <code>mfa_required</code> policy flag.</td>
+                  <td>The login check applies when the flag is on or the user enabled MFA, provided a TOTP secret exists; the flag does not enroll an account by itself.</td>
                 </tr>
                 <tr>
                   <td><strong>Authorization</strong></td>
@@ -1456,18 +1461,18 @@ footer {
                 </tr>
                 <tr>
                   <td><strong>Brute force</strong></td>
-                  <td>Failed attempts are counted; three failures lock the account for 15 minutes. An admin can unlock it.</td>
+                  <td>Failed attempts are counted; five failures by default lock the account for 15 minutes. Both thresholds are configurable, and an admin can unlock it.</td>
                   <td>Lockout state lives in the user record; it is not a network-level rate limit.</td>
                 </tr>
                 <tr>
                   <td><strong>Password policy</strong></td>
-                  <td>HIBP k-anonymity check with a graceful fallback when the host has no internet access.</td>
-                  <td>Offline deployments log a warning and allow the flow rather than block operations.</td>
+                  <td>Optional HIBP k-anonymity check (<code>hibp_enabled</code>) with a fallback when the host has no internet access.</td>
+                  <td>Disabled by default. Offline deployments log a warning and allow the flow rather than block operations.</td>
                 </tr>
                 <tr>
                   <td><strong>Licensing</strong></td>
-                  <td>RS256 JWT verified at startup; unlicensed instances are refused.</td>
-                  <td>An operational gate, not a security boundary against a modified build.</td>
+                  <td>RS256 JWT verified at startup; on-premise instances exit on failure.</td>
+                  <td>Skipped when <code>VERCEL=1</code>. An operational gate, not a security boundary against a modified build.</td>
                 </tr>
                 <tr>
                   <td><strong>Audit</strong></td>
@@ -1515,8 +1520,8 @@ footer {
 
           <h3>Packaging notes that mattered</h3>
           <ul>
-            <li><strong>PyInstaller and Waitress.</strong> The backend binary wraps Flask in a Waitress WSGI server on port 5000 so the process stays alive and serves traffic inside the container. Hidden imports for <code>psycopg2</code> and <code>waitress</code> are bundled.</li>
-            <li><strong>Nginx DNS resolution.</strong> A backend restart could take the proxy down. The Nginx configuration uses Docker’s internal resolver with a 30-second validity window, so the upstream is re-resolved instead of cached forever.</li>
+            <li><strong>PyInstaller and Waitress.</strong> When <code>FLASK_ENV=production</code> is set (the systemd unit does this), the backend binary serves through Waitress on port 5000 instead of Flask’s development server. Hidden imports for <code>psycopg2</code> and <code>waitress</code> are bundled.</li>
+            <li><strong>Nginx DNS resolution.</strong> A backend restart could take the proxy down. <code>frontend-react/nginx.conf</code> uses Docker’s internal resolver with a 30-second validity window, so the upstream is re-resolved instead of cached forever.</li>
             <li><strong>GLIBC compatibility.</strong> A mismatch produced <code>GLIBC_2.38 not found</code>. Builder and runtime stages are pinned to <code>python:3.12-slim</code> to keep the binary and the base image aligned.</li>
             <li><strong>Database migration.</strong> Moving from the cloud deployment to an on-premise host uses an export, a transfer, and an import script that skips existing rows with <code>ON CONFLICT DO NOTHING</code>.</li>
           </ul>
@@ -1634,7 +1639,7 @@ footer {
           </div>
 
           <p>
-            The repository is private, so file paths are cited rather than linked. Each entry is a
+            The product repository is private, so file paths are cited rather than linked. Each entry is a
             place where the behaviour described above can be inspected. This is evidence of
             implementation, not an audit opinion.
           </p>
@@ -1674,8 +1679,12 @@ footer {
                   <td>The air-gapped installation path.</td>
                 </tr>
                 <tr>
+                  <td><code>frontend-react/nginx.conf</code></td>
+                  <td>Docker DNS resolver and frontend reverse-proxy configuration.</td>
+                </tr>
+                <tr>
                   <td><code>deploy/nginx.conf</code></td>
-                  <td>Docker DNS resolver and reverse-proxy configuration.</td>
+                  <td>On-premise static frontend and API proxy.</td>
                 </tr>
                 <tr>
                   <td><code>servers.xlsx</code>, <code>Linux.xlsx</code>, <code>VPCs.xlsx</code></td>
